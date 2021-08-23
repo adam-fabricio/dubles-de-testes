@@ -1,11 +1,12 @@
 import pytest
 from unittest import skip
-from unittest.mock import patch, mock_open, MagicMock
+from unittest.mock import patch, mock_open, MagicMock, call 
 from colecao.livros import (consultar_livros,
                             executar_requisicao,
                             escrever_em_arquivo,
                             Consulta,
-                            baixar_livros
+                            baixar_livros,
+                            Resposta
                             )
 from urllib.request import HTTPError
 
@@ -471,9 +472,40 @@ class MockConsulta:
         assert self.chamadas == [(None, None, "Python")]
 
 
-def test_quando_baixar_livros_instancia_consulta_uma_vez():
+@patch ("colecao.livros.executar_requisicao")
+def test_quando_baixar_livros_instancia_consulta_uma_vez(stub_executar_requisicao, resultado_em_duas_paginas):
+    stub_executar_requisicao.side_effect = resultado_em_duas_paginas
     duble = MockConsulta()
+    Resposta.quantidade_documentos_por_pagina = 3
     with patch("colecao.livros.Consulta", duble.Consulta):
         baixar_livros(None, None, "Python")
         duble.verifica()
 
+@patch ("colecao.livros.executar_requisicao")
+def test_quando_baixar_livro_deve_chamar_requisicao_n_vezes(mock_executar_requisicao, resultado_em_duas_paginas):
+    mock_executar_requisicao.side_efect = resultado_em_duas_paginas
+    Resposta.quantidade_documentos_por_pagina = 3
+    baixar_livros(None, None, "Python")
+    assert mock_executar_requisicao.call_args_list ==[
+        call("https://buscarlivros?q=Python&page=1"),
+        call("https://buscarlivros?q=Python&page=2"),
+    ]
+
+
+@patch ("colecao.livros.executar_requisicao")
+def test_quando_baixar_livro_deve_instanciar_Resposta_tres_vezes(stub_executar_requisicao, resultado_em_tres_paginas):
+    stub_executar_requisicao.side_effect = resultado_em_tres_paginas
+    Resposta.quantidade_documentos_por_pagina = 3
+    with patch("colecao.livros.Resposta") as MockResposta:
+        MockResposta.side_effect = [
+            Resposta(resultado_em_tres_paginas[0]),
+            Resposta(resultado_em_tres_paginas[1]),
+            Resposta(resultado_em_tres_paginas[2])
+        ]
+        baixar_livros(None, None, "Python")
+        assert MockResposta.call_args_list == [
+            Resposta(resultado_em_tres_paginas[0]),
+            Resposta(resultado_em_tres_paginas[1]),
+            Resposta(resultado_em_tres_paginas[2])
+        ]
+        

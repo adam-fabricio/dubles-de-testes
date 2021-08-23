@@ -4,14 +4,13 @@ from urllib.error import HTTPError
 from math import ceil
 import logging
 import os
-
+import json
 
 def consultar_livros(autor):
-    if not isinstance(autor, str):
-        raise Exception("autor tem que ser uma string")
-    dados_para_requisicao = preparar_dados_para_requisicao(autor)
-    url = obter_url("https://buscador", dados_para_requisicao)
-    return executar_requisicao(url)
+    dados = preparar_dados_para_requisicao(autor)
+    url = obter_url("https://buscador", dados)
+    ret = executar_requisicao(url)
+    return ret
 
 
 def preparar_dados_para_requisicao(autor):
@@ -144,7 +143,17 @@ class Resposta:
 
 
 def baixar_livros(autor, titulo, livre):
-    Consulta(autor, titulo, livre)
+    consulta = Consulta(autor, titulo, livre)
+    total_de_paginas = 1
+    while True:
+        resultado = executar_requisicao(consulta.seguinte)
+        resposta = Resposta(resultado)
+        total_de_paginas = resposta.total_de_paginas
+        if consulta.pagina == 1:
+            total_de_paginas = 2
+        if consulta.pagina == total_de_paginas:
+            break
+        
 
 """
 def baixar_livros(self, arquivos, autor=None, titulo=None, livre=None):
