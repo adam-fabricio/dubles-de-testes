@@ -142,17 +142,21 @@ class Resposta:
         return 0
 
 
-def baixar_livros(autor, titulo, livre):
+def baixar_livros(arquivo, autor, titulo, livre):
     consulta = Consulta(autor, titulo, livre)
     total_de_paginas = 1
+    i = 0
     while True:
         resultado = executar_requisicao(consulta.seguinte)
-        resposta = Resposta(resultado)
-        total_de_paginas = resposta.total_de_paginas
-        if consulta.pagina == 1:
+        if resultado:
+            resposta = Resposta(resultado)
+            total_de_paginas = resposta.total_de_paginas
+            escrever_em_arquivo(arquivo[i], resultado)
+        elif consulta.pagina == 1:
             total_de_paginas = 2
         if consulta.pagina == total_de_paginas:
             break
+        i += 1
         
 
 """

@@ -254,14 +254,14 @@ def resultado_em_duas_paginas():
         """,
         """
         {
-            "num_docs": 5
+            "num_docs": 5,
             "docs": [
                 {"author": "Kenneth Reitz",
                  "title": "O Guia do Mochileiro Python"
-                }.
+                },
                 {"author": "Wes McKinney",
                  "title": "Python Para Abakuse de Dados"
-                },
+                }
             ]
         }
         """,
@@ -305,14 +305,14 @@ def resultado_em_tres_paginas():
         """,
         """
         {
-            "num_docs": 8
+            "num_docs": 8,
             "docs": [
                 {"author": "Kenneth Reitz",
                  "title": "O Guia do Mochileiro Python"
-                }.
+                },
                 {"author": "Wes McKinney",
                  "title": "Python Para Abakuse de Dados"
-                },
+                }
             ]
         }
         """,
@@ -404,14 +404,14 @@ def resultado_em_tres_paginas_erro_na_pagina_2():
         None,
         """
         {
-            "num_docs": 8
+            "num_docs": 8,
             "docs": [
                 {"author": "Kenneth Reitz",
                  "title": "O Guia do Mochileiro Python"
-                }.
+                },
                 {"author": "Wes McKinney",
                  "title": "Python Para Abakuse de Dados"
-                },
+                }
             ]
         }
         """,
@@ -440,14 +440,14 @@ def resultado_em_tres_pagina_erro_na_pagina_1():
         """,
         """
         {
-            "num_docs": 8
+            "num_docs": 8,
             "docs": [
                 {"author": "Kenneth Reitz",
                  "title": "O Guia do Mochileiro Python"
-                }.
+                },
                 {"author": "Wes McKinney",
                  "title": "Python Para Abakuse de Dados"
-                },
+                }
             ]
         }
         """,
@@ -477,35 +477,108 @@ def test_quando_baixar_livros_instancia_consulta_uma_vez(stub_executar_requisica
     stub_executar_requisicao.side_effect = resultado_em_duas_paginas
     duble = MockConsulta()
     Resposta.quantidade_documentos_por_pagina = 3
+    arquivo = [
+        "/tmp/arquivo1",
+        "/tmp/arquivo2",
+        "/tmp/arquivo3"
+    ]
     with patch("colecao.livros.Consulta", duble.Consulta):
-        baixar_livros(None, None, "Python")
+        baixar_livros(arquivo, None, None, "Python")
         duble.verifica()
+
 
 @patch ("colecao.livros.executar_requisicao")
 def test_quando_baixar_livro_deve_chamar_requisicao_n_vezes(mock_executar_requisicao, resultado_em_duas_paginas):
-    mock_executar_requisicao.side_efect = resultado_em_duas_paginas
+    mock_executar_requisicao.side_effect = resultado_em_duas_paginas
     Resposta.quantidade_documentos_por_pagina = 3
-    baixar_livros(None, None, "Python")
+    arquivo = [
+        "/tmp/arquivo1",
+        "/tmp/arquivo2",
+        "/tmp/arquivo3"
+    ]
+    baixar_livros(arquivo, None, None, "Python")
     assert mock_executar_requisicao.call_args_list ==[
         call("https://buscarlivros?q=Python&page=1"),
         call("https://buscarlivros?q=Python&page=2"),
     ]
 
 
+
 @patch ("colecao.livros.executar_requisicao")
 def test_quando_baixar_livro_deve_instanciar_Resposta_tres_vezes(stub_executar_requisicao, resultado_em_tres_paginas):
     stub_executar_requisicao.side_effect = resultado_em_tres_paginas
     Resposta.quantidade_documentos_por_pagina = 3
+    arquivo = [
+        "/tmp/arquivo1",
+        "/tmp/arquivo2",
+        "/tmp/arquivo3"
+    ]
     with patch("colecao.livros.Resposta") as MockResposta:
         MockResposta.side_effect = [
             Resposta(resultado_em_tres_paginas[0]),
             Resposta(resultado_em_tres_paginas[1]),
             Resposta(resultado_em_tres_paginas[2])
         ]
-        baixar_livros(None, None, "Python")
+        baixar_livros(arquivo, None, None, "Python")
         assert MockResposta.call_args_list == [
-            Resposta(resultado_em_tres_paginas[0]),
-            Resposta(resultado_em_tres_paginas[1]),
-            Resposta(resultado_em_tres_paginas[2])
+            call(resultado_em_tres_paginas[0]),
+            call(resultado_em_tres_paginas[1]),
+            call(resultado_em_tres_paginas[2])
         ]
         
+
+@patch ("colecao.livros.executar_requisicao")
+def test_quando_baixar_livros_deve_escrever_em_arquivo_tres_vezes(stub_executar_requisicao, resultado_em_tres_paginas):
+    stub_executar_requisicao.side_effect = resultado_em_tres_paginas
+    Resposta.quantidade_documentos_por_pagina = 3
+    arquivo = [
+        "/tmp/arquivo1",
+        "/tmp/arquivo2",
+        "/tmp/arquivo3"
+    ]
+    with patch("colecao.livros.escrever_em_arquivo") as mock_escrever:
+        mock_escrever.return_value = baixar_livros(arquivo, None, None, "Python")
+        assert mock_escrever.call_args_list == [
+            call(arquivo[0], resultado_em_tres_paginas[0]),
+            call(arquivo[1], resultado_em_tres_paginas[1]),
+            call(arquivo[2], resultado_em_tres_paginas[2]),            
+        ]
+
+
+@patch ("colecao.livros.executar_requisicao")
+def test_quando_baixar_livros_deve_escrever_em_arquivos_para_pagina_1_e_3(stub_executar_requisicao, resultado_em_tres_paginas_erro_na_pagina_2):
+    stub_executar_requisicao.side_effect = resultado_em_tres_paginas_erro_na_pagina_2
+    Resposta.quantidade_documentos_por_pagina = 3
+    arquivo = [
+        "/tmp/arquivo1",
+        "/tmp/arquivo2",
+        "/tmp/arquivo3"
+    ]
+    with patch("colecao.livros.escrever_em_arquivo") as mock_escrever:
+        mock_escrever.side_effect = [None, None]
+        mock_escrever.return_value = baixar_livros(arquivo, None, None, "Python")
+        assert mock_escrever.call_args_list == [
+            call(arquivo[0], resultado_em_tres_paginas_erro_na_pagina_2[0]),
+            # call(arquivo[1], resultado_em_tres_paginas_erro_na_pagina_2[1]),
+            call(arquivo[2], resultado_em_tres_paginas_erro_na_pagina_2[2]),            
+        ]
+
+
+@patch ("colecao.livros.executar_requisicao")
+def test_quando_baixar_livros_deve_escrever_em_arquivos_para_pagina_2_e_3(stub_executar_requisicao, resultado_em_tres_pagina_erro_na_pagina_1):
+    stub_executar_requisicao.side_effect = resultado_em_tres_pagina_erro_na_pagina_1
+    Resposta.quantidade_documentos_por_pagina = 3
+    arquivo = [
+        "/tmp/arquivo1",
+        "/tmp/arquivo2",
+        "/tmp/arquivo3"
+    ]
+    with patch("colecao.livros.escrever_em_arquivo") as mock_escrever:
+        mock_escrever.side_effect = [None, None]
+        mock_escrever.return_value = baixar_livros(arquivo, None, None, "Python")
+        assert mock_escrever.call_args_list == [
+            # call(arquivo[0], resultado_em_tres_paginas_erro_na_pagina_2[0]),
+            call(arquivo[1], resultado_em_tres_pagina_erro_na_pagina_1[1]),
+            call(arquivo[2], resultado_em_tres_pagina_erro_na_pagina_1[2]),            
+        ]
+
