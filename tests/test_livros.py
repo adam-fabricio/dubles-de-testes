@@ -9,7 +9,7 @@ from colecao.livros import (consultar_livros,
                             Resposta,
                             registrar_livros,
                             )
-from urllib.request import HTTPError
+from urllib.request import HTTPError, URLError
 
 
 
@@ -109,22 +109,18 @@ def stub_urlopen_http_error(url, timeout):
     raise HTTPError(Dummy(), Dummy(), "mensagem de erro", Dummy(), fp)
 
 
-@skip("Nao compativel")
+
 @patch("colecao.livros.urlopen", return_value=StubHTTPResponse())
 def test_quando_executar_requsicao_deve_retornar_http_error_1(stub_urlopen):
-    with patch("colecao.livros.urlopen", stub_urlopen_http_error):
-        with pytest.raises(HTTPError) as excecao:
-            executar_requisicao("https://buscador")
-        assert "mensagem de erro" in str(excecao.value)
+    stub_urlopen.side_effect = URLError("mensagem de erro")
+    with pytest.raises(URLError) as excecao:
+        executar_requisicao("https://buscador")
+    assert "mensagem de erro" in str(excecao.value)
 
-@skip("Nao compativel")
-@patch("colecao.livros.urlopen", return_value=StubHTTPResponse())
 @patch("colecao.livros.urlopen")
-def test_quando_executar_requsicao_deve_retornar_http_error_2(stub_urlope, uble_urlopen):
-    fp = mock_open
-    fp.close = Dummy
-    stub_urlopen.side_effect = HTTPError(Dummy(), Dummy(), "mensagem de erro", Dummy(), fp)
-    with pytest.raises(HTTPError) as excecao:
+def test_quando_executar_requsicao_deve_retornar_http_error_2(stub_urlopen):
+    stub_urlopen.side_effect = URLError("mensagem de erro")
+    with pytest.raises(URLError) as excecao:
         executar_requisicao("https://buscador")
     assert "mensagem de erro" in str(excecao.value)
 
@@ -727,4 +723,5 @@ def test_quando_registrar_livros_deve_inserir_8_registros_na_base_de_dados(stub_
     assert fake_db._registros[0] == {
             "author": "Luciano Ramalho",
             "title": "Python Fluent"}
- 
+
+
