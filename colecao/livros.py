@@ -157,22 +157,18 @@ def baixar_livros(arquivo, autor, titulo, livre):
         if consulta.pagina == total_de_paginas:
             break
         i += 1
-        
 
-"""
-def baixar_livros(self, arquivos, autor=None, titulo=None, livre=None):
-    consulta = Consulta(autor, titulo, livre)
-    total_de_paginas = 1
-    i = 0
-    while True:
-        resultado = executar_requisicao(consulta.seguinte)
-        if resultado:
-            resposta = Resposta(resultado)
-            total_de_paginas = resposta.total_de_paginas
-            escrever_em_arquivo(arquivo[i], resultado)
-        elif consulta.pagina == 1:
-            total_de_paginas = 2
-        if consulta.pagina == total_de_paginas:
-            break
-        i += 1
-"""
+
+def ler_arquivo():
+    return ""
+
+
+def registrar_livros(arquivos, inserir_registros):
+    quantidade = 0
+    for arquivo in arquivos:
+        conteudo = ler_arquivo(arquivo)
+        resposta = Resposta(conteudo)
+        quantidade += inserir_registros(resposta.documentos)
+    return quantidade
+
+

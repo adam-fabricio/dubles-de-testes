@@ -6,7 +6,8 @@ from colecao.livros import (consultar_livros,
                             escrever_em_arquivo,
                             Consulta,
                             baixar_livros,
-                            Resposta
+                            Resposta,
+                            registrar_livros,
                             )
 from urllib.request import HTTPError
 
@@ -166,7 +167,7 @@ class StubLogging():
 def stub_makedirs(diretorio):
     raise OSError(f"Nao foi possivel criar o diretorio {diretorio}")
 
-def teste_quando_escreve_em_arquivo_deve_logar_os_error():
+def test_quando_escreve_em_arquivo_deve_logar_os_error():
     arquivo = "/tmp/arquivos.json"
     conteudo = "dados de livros"
     stub_logging = StubLogging()
@@ -370,12 +371,34 @@ def conteudo_de_quatro_arquivos():
         {
             "num_docs": 17,
             "docs": [
+                {"author": "Luciano Ramalho",
+                 "title": "Python Fluent"
+                },
+                {"author": "Nilo Neil",
+                 "title": "Introducao a Programacao com Python"
+                },
+                {"author": "Luciano Ramalho",
+                 "title": "Python Fluent"
+                },
+                {"author": "Nilo Neil",
+                 "title": "Introducao a Programacao com Python"
+                },
+                {"author": "Allen B. Downey",
+                 "title": "Pense em Python"
+                }
+            ]
+        }
+        """,
+        """
+        {
+            "num_docs": 17,
+            "docs": [
                 {"author": "Kenneth Reitz",
                  "title": "O Guia do Mochileiro Python"
-                }.
+                },
                 {"author": "Wes McKinney",
                  "title": "Python Para Abakuse de Dados"
-                },
+                }
             ]
         }
         """,
@@ -582,3 +605,126 @@ def test_quando_baixar_livros_deve_escrever_em_arquivos_para_pagina_2_e_3(stub_e
             call(arquivo[2], resultado_em_tres_pagina_erro_na_pagina_1[2]),            
         ]
 
+
+
+def test_quando_registrar_livros_deve_chamar_ler_arquivo_3_vezes(resultado_em_tres_paginas):
+    arquivos = [
+            "/tmp/arquivo1",
+            "/tmp/arquivo2",
+            "/tmp/arquivo3",
+            ] 
+    with patch("colecao.livros.ler_arquivo") as duble_ler_arquivo:
+        duble_ler_arquivo.side_effect = resultado_em_tres_paginas
+        registrar_livros(arquivos, fake_inserir_registros)
+        assert duble_ler_arquivo.call_args_list == [
+            call(arquivos[0]),
+            call(arquivos[1]),
+            call(arquivos[2]),
+        ]
+
+
+def test_quando_registrar_livros_deve_instanciar_Resposta_3_vezes(resultado_em_tres_paginas):
+    arquivos = [
+            "/tmp/arquivo1",
+            "/tmp/arquivo2",
+            "/tmp/arquivo3",
+            ]
+    with patch("colecao.livros.ler_arquivo") as stub_ler_arquivo:
+        stub_ler_arquivo.side_effect = resultado_em_tres_paginas
+        with patch("colecao.livros.Resposta") as MockResposta:
+            registrar_livros(arquivos, fake_inserir_registros)
+            MockResposta.side_effect = [
+                        Resposta(resultado_em_tres_paginas[0]),
+                        Resposta(resultado_em_tres_paginas[1]),
+                        Resposta(resultado_em_tres_paginas[2]),
+                    ]
+            assert MockResposta.call_args_list == [
+                    call(resultado_em_tres_paginas[0]),
+                    call(resultado_em_tres_paginas[1]),
+                    call(resultado_em_tres_paginas[2]),
+                    ]
+
+
+@patch("colecao.livros.ler_arquivo")            
+def test_quando_registrar_livros_deve_instanciar_Resposta_quatro_vezes(stub_ler_arquivo, conteudo_de_quatro_arquivos):
+    arquivos = [
+            "/tmp/arquivo1",
+            "/tmp/arquivo2",
+            "/tmp/arquivo3",
+            "/tmp/arquivo4",
+            ]
+    stub_ler_arquivo.side_effect = conteudo_de_quatro_arquivos
+    with patch("colecao.livros.Resposta") as MockResposta:
+        registrar_livros(arquivos, fake_inserir_registros)
+        MockResposta.side_effect = [
+                    Resposta(conteudo_de_quatro_arquivos[0]),
+                    Resposta(conteudo_de_quatro_arquivos[1]),
+                    Resposta(conteudo_de_quatro_arquivos[2]),
+                    Resposta(conteudo_de_quatro_arquivos[3]),
+                ]
+        assert MockResposta.call_args_list == [
+                call(conteudo_de_quatro_arquivos[0]),
+                call(conteudo_de_quatro_arquivos[1]),
+                call(conteudo_de_quatro_arquivos[2]),
+                call(conteudo_de_quatro_arquivos[3]),
+                ]
+
+
+def fake_inserir_registros(dados):
+    return len(dados)
+
+
+@patch("colecao.livros.ler_arquivo")
+def test_quando_registrar_livros_deve_chamar_inserir_registro(stub_ler_arquivos, conteudo_de_quatro_arquivos):
+    arquivos = [
+            "/tmp/arquivo1",
+            "/tmp/arquivo3",
+            "/tmp/arquivo4",
+            ]
+    conteudo_de_tres_arquivos = conteudo_de_quatro_arquivos[1:]
+    stub_ler_arquivos.side_effect = conteudo_de_tres_arquivos
+   
+    quantidade = registrar_livros(arquivos, fake_inserir_registros)
+    assert quantidade == 12
+
+
+
+@patch("colecao.livros.ler_arquivo")
+def test_quando_registrar_livros_deve_inserir_5_registros(stub_ler_arquivo, resultado_em_duas_paginas):
+    stub_ler_arquivo.side_effect = resultado_em_duas_paginas
+    arquivos = [
+            "/tmp/arquivo_1",
+            "/tmp/arquivo_2",
+            ]
+    fake_db = MagicMock()
+    fake_db.inserir_registros = fake_inserir_registros
+    # fake_db.inserir_registros = lambda dados: len(dados)
+    quantidade = registrar_livros(arquivos, fake_db.inserir_registros)
+    assert quantidade == 5
+
+
+
+class FakeDb:
+    def __init__(self):
+        self._registros = []
+
+    def inserir_registros(self, dados):
+        self._registros.extend(dados)
+        return len(dados)
+
+
+@patch("colecao.livros.ler_arquivo")
+def test_quando_registrar_livros_deve_inserir_8_registros_na_base_de_dados(stub_ler_arquivo, resultado_em_tres_paginas):
+    arquivos = [
+            "/tmp/arquivo1",
+            "/tmp/arquivo2",
+            "/tmp/arquivo3",
+            ]
+    stub_ler_arquivo.side_effect = resultado_em_tres_paginas
+    fake_db = FakeDb()
+    quantidade = registrar_livros(arquivos, fake_db.inserir_registros)
+    assert quantidade == 8
+    assert fake_db._registros[0] == {
+            "author": "Luciano Ramalho",
+            "title": "Python Fluent"}
+ 
